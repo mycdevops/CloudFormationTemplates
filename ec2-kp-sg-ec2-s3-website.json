@@ -1,0 +1,111 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "EC2 with Apache, S3 bucket, Key Pair, and Security Group",
+  "Parameters": {
+    "SubnetId": {
+      "Type": "AWS::EC2::Subnet::Id",
+      "Description": "Subnet for EC2 instance"
+    },
+    "VpcId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "Default": "vpc-08fc03a35716d207c",
+      "Description": "VPC where SG will be created"
+    }
+  },
+  "Resources": {
+
+    "KeyPair001": {
+      "Type": "AWS::EC2::KeyPair",
+      "Properties": {
+        "KeyName": "keypair-001"
+      }
+    },
+
+    "SecurityGroup001": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow SSH and HTTP",
+        "VpcId": { "Ref": "VpcId" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "SG-001"
+          }
+        ]
+      }
+    },
+
+    "EC2Instance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": "ami-0532be01f26a3de55",
+        "InstanceType": "t3.micro",
+        "KeyName": { "Ref": "KeyPair001" },
+        "SubnetId": { "Ref": "SubnetId" },
+        "SecurityGroupIds": [
+          { "Ref": "SecurityGroup001" }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash\n",
+                "yum update -y\n",
+                "yum install -y httpd\n",
+                "systemctl start httpd\n",
+                "systemctl enable httpd\n",
+                "echo '<html><h1>Welcome to EC2 via CloudFormation with
+				KEY PAIR - SECURITY GROUP - S3 BUCKET - INDEX PAGE </h1><p>Apache installed successfully</p></html>' > /var/www/html/index.html\n"
+              ]
+            ]
+          }
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "EC2-CFT-Instance"
+          }
+        ]
+      }
+    },
+
+    "MyS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "myfirstbucket-0902",
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceId": {
+      "Value": { "Ref": "EC2Instance" }
+    },
+    "SecurityGroupId": {
+      "Value": { "Ref": "SecurityGroup001" }
+    },
+    "KeyPairName": {
+      "Value": { "Ref": "KeyPair001" }
+    },
+    "BucketName": {
+      "Value": { "Ref": "MyS3Bucket" }
+    }
+  }
+}
